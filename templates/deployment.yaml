@@ -1,0 +1,129 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ratelimit.fullname" . }}
+  labels:
+    {{- include "ratelimit.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "ratelimit.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "ratelimit.labels" . | nindent 8 }}
+    spec:
+      priorityClassName: {{ .Values.priorityClassName }}
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "ratelimit.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        {{- if eq .Values.env.USE_STATSD "true" }}
+        - name: statsd
+          image: "{{ .Values.statsdExporter.image.repository }}:{{ .Values.statsdExporter.image.tag }}"
+          imagePullPolicy: {{ .Values.statsdExporter.image.pullPolicy }}
+          command:
+            - /bin/statsd_exporter
+          args:
+            - --statsd.mapping-config=/etc/statsd-exporter/conf.yaml
+          ports:
+            - name: tcp-statsd
+              containerPort: 9125
+            - name: http-metrics
+              containerPort: 9102
+          volumeMounts:
+            - name: statsd-exporter-conf
+              mountPath: /etc/statsd-exporter
+        {{- end }}
+        {{- if .Values.syncConfigSidecar.enabled }}
+        - name: config-sync
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.syncConfigSidecar.image.repository }}:{{ .Values.syncConfigSidecar.image.tag }}"
+          imagePullPolicy: {{ .Values.syncConfigSidecar.image.pullPolicy }}
+          env:
+            - name: METHOD
+            - name: FOLDER
+              value: "{{ .Values.env.RUNTIME_ROOT }}/{{ .Values.env.RUNTIME_SUBDIRECTORY }}/config"
+            - name: LABEL
+              value: {{ .Values.syncConfigSidecar.env.LABEL }}
+            - name: NAMESPACE
+              value: {{ .Values.syncConfigSidecar.env.NAMESPACE }}
+          volumeMounts:
+            - name: ratelimit-conf
+              mountPath: "{{ .Values.env.RUNTIME_ROOT }}/{{ .Values.env.RUNTIME_SUBDIRECTORY }}/config"
+        {{- end }}
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /bin/ratelimit
+          ports:
+            - name: http
+              containerPort: {{ .Values.env.PORT }}
+              protocol: TCP
+            - name: grpc
+              containerPort: {{ .Values.env.GRPC_PORT }}
+              protocol: TCP
+            - name: http-debug
+              containerPort: {{ .Values.env.DEBUG_PORT }}
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /healthcheck
+              port: http
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "ratelimit.fullname" . }}-env
+            - secretRef:
+                name: {{ include "ratelimit.fullname" . }}-env
+          volumeMounts:
+            - name: ratelimit-conf
+              mountPath: "{{ .Values.env.RUNTIME_ROOT }}/{{ .Values.env.RUNTIME_SUBDIRECTORY }}/config"
+      volumes:
+        {{- if .Values.syncConfigSidecar.enabled }}
+        - name: ratelimit-conf
+          emptyDir: {}
+        {{- else }}
+        - name: ratelimit-conf
+          configMap:
+            name: {{ include "ratelimit.fullname" . }}
+        {{- end }}
+        {{- if eq .Values.env.USE_STATSD "true" }}
+        - name: statsd-exporter-conf
+          configMap:
+            name: {{ include "ratelimit.fullname" . }}-statsd
+        {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

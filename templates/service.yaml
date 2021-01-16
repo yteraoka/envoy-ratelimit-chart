@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ratelimit.fullname" . }}
+  labels:
+    {{- include "ratelimit.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+    - port: {{ .Values.service.grpcPort }}
+      targetPort: grpc
+      protocol: TCP
+      name: grpc
+    - port: {{ .Values.service.debugPort }}
+      targetPort: http-debug
+      protocol: TCP
+      name: http-debug
+    {{- if eq .Values.env.USE_STATSD "true" }}
+    {{- if .Values.serviceMonitor.enabled }}
+    - port: 9102
+      targetPort: http-metrics
+      protocol: TCP
+      name: http-metrics
+    {{- end }}
+    {{- end }}
+  selector:
+    {{- include "ratelimit.selectorLabels" . | nindent 4 }}
