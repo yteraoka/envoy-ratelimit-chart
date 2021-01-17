@@ -8,7 +8,7 @@ image:
   repository: envoyproxy/ratelimit
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "v1.4.0"
+  tag: "6f5de117"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -93,7 +93,9 @@ env:
   RUNTIME_ROOT: "/srv/runtime_data/current"
   RUNTIME_SUBDIRECTORY: "ratelimit"
   RUNTIME_IGNOREDOTFILES: "true"
+  RUNTIME_WATCH_ROOT: "true"
   LOG_LEVEL: "WARN"
+  LOG_FORMAT: "text"
   REDIS_SOCKET_TYPE: "unix"
   REDIS_URL: "/var/run/nutcracker/ratelimit.sock"
   REDIS_POOL_SIZE: "10"
