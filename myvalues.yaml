@@ -1,0 +1,19 @@
+env:
+  RUNTIME_ROOT: "/data"
+  RUNTIME_WATCH_ROOT: "false"
+  LOG_LEVEL: "DEBUG"
+  LOG_FORMAT: "json"
+  REDIS_SOCKET_TYPE: "tcp"
+  REDIS_URL: "ratelimit-redis-master:6379"
+  #LOCAL_CACHE_SIZE_IN_BYTES: "10485760" # 10MB (1024 * 1024 * 10)
+  USE_STATSD: "true"
+  STATSD_HOST: "localhost"
+  STATSD_PORT: "9125"
+secretEnv:
+  REDIS_AUTH: password
+
+serviceMonitor:
+  enabled: false
+
+redis:
+  password: password

@@ -1,0 +1,22 @@
+{{- if eq .Values.env.USE_STATSD "true" }}
+{{- if .Values.serviceMonitor.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    {{- include "ratelimit.labels" . | nindent 4 }}
+  name: {{ include "ratelimit.fullname" . }}
+spec:
+  endpoints:
+    - interval: 10s
+      port: http-metrics
+      scheme: http
+  jobLabel: app
+  namespaceSelector:
+    matchNames:
+      - {{ .Release.Namespace }}
+  selector:
+    matchLabels:
+      app: {{ include "ratelimit.fullname" . }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,133 @@
+# Default values for ratelimit.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: envoyproxy/ratelimit
+  pullPolicy: IfNotPresent
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "6f5de117"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+priorityClassName: system-cluster-critical
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 1000
+  runAsGroup: 1000
+  runAsUser: 1000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+service:
+  type: ClusterIP
+  port: 8080
+  grpcPort: 8081
+  debugPort: 6070
+
+ingress:
+  enabled: false
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+  hosts:
+    - host: chart-example.local
+      paths: []
+  tls: []
+  #  - secretName: chart-example-tls
+  #    hosts:
+  #      - chart-example.local
+
+resources: {}
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+env:
+  PORT: "8080"
+  GRPC_PORT: "8081"
+  DEBUG_PORT: "6070"
+  USE_STATSD: "false"
+  STATSD_HOST: "localhost"
+  STATSD_PORT: "8125"
+  RUNTIME_ROOT: "/srv/runtime_data/current"
+  RUNTIME_SUBDIRECTORY: "ratelimit"
+  RUNTIME_IGNOREDOTFILES: "true"
+  RUNTIME_WATCH_ROOT: "true"
+  LOG_LEVEL: "WARN"
+  LOG_FORMAT: "text"
+  REDIS_SOCKET_TYPE: "unix"
+  REDIS_URL: "/var/run/nutcracker/ratelimit.sock"
+  REDIS_POOL_SIZE: "10"
+  REDIS_TLS: "false"
+  REDIS_PERSECOND: "false"
+  REDIS_PERSECOND_SOCKET_TYPE: "unix"
+  REDIS_PERSECOND_URL: "/var/run/nutcracker/ratelimitpersecond.sock"
+  REDIS_PERSECOND_POOL_SIZE: "10"
+  REDIS_PERSECOND_TLS: "false"
+  EXPIRATION_JITTER_MAX_SECONDS: "300"
+  LOCAL_CACHE_SIZE_IN_BYTES: "0"
+secretEnv: {}
+#  REDIS_AUTH: ""
+#  REDIS_PERSECOND_AUTH: ""
+
+statsdExporter:
+  image:
+    repository: prom/statsd-exporter
+    tag: v0.18.0
+    pullPolicy: IfNotPresent
+
+syncConfigSidecar:
+  enabled: true
+  image:
+    repository: kiwigrid/k8s-sidecar
+    tag: 0.1.151
+    #tag: latest
+    pullPolicy: IfNotPresent
+  env:
+    LABEL: ratelimit-config
+    NAMESPACE: ALL
+    SLEEP_TIME: "60"
+
+serviceMonitor:
+  enabled: false
